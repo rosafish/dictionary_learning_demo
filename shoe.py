@@ -40,6 +40,14 @@ def get_args():
         required=True,
         help="which SAE architectures to train",
     )
+    parser.add_argument(
+        "--components",
+        type=str,
+        nargs="+",
+        choices=["embed", "resid", "attn", "mlp"],
+        required=True,
+        help="which components to train SAE on",
+    )
     parser.add_argument("--device", type=str, default="cuda:0", help="device to train on")
     parser.add_argument("--hf_repo_id", type=str, help="Hugging Face repo ID to push results to")
     args = parser.parse_args()
@@ -60,6 +68,7 @@ def run_sae_training(
     use_wandb: bool = False,
     save_checkpoints: bool = False,
     buffer_tokens: int = 250_000,
+    component: str,
 ):
     random.seed(shoe_config.random_seeds[0])
     t.manual_seed(shoe_config.random_seeds[0])
@@ -93,10 +102,21 @@ def run_sae_training(
 
     model = LanguageModel(model_name, dispatch=True, device_map=device)
     model = model.to(dtype=dtype)
-    submodule = utils.get_submodule(model, layer)
-    submodule_name = f"resid_post_layer_{layer}"
-    io = "out"
-    activation_dim = model.config.hidden_size
+    
+    print(f"component: {component}")
+    print(f"layer: {layer}")
+    submodule = utils.get_submodule(model, component, layer)
+
+    if component == "embed":
+        submodule_name = "embed"
+        activation_dim = model.config.hidden_size
+    elif component in ["resid", "attn", "mlp"]:
+        if layer is None:
+            raise ValueError(f"Layer index must be specified for component '{component}'")
+        submodule_name = f"{component}_out_{layer}"
+        activation_dim = model.config.hidden_size  # Both attn_out and mlp_out are in residual space
+    else:
+        raise ValueError(f"Unknown component type: {component}")
 
     generator = hf_dataset_to_generator("monology/pile-uncopyrighted")
 
@@ -108,7 +128,7 @@ def run_sae_training(
         ctx_len=context_length,
         refresh_batch_size=llm_batch_size,
         out_batch_size=sae_batch_size,
-        io=io,
+        io="out",  # Always output side for SAE training
         d_submodule=activation_dim,
         device=device,
     )
@@ -124,6 +144,7 @@ def run_sae_training(
         layer,
         submodule_name,
         steps,
+        component,
     )
 
     print(f"len trainer configs: {len(trainer_configs)}")
@@ -198,7 +219,8 @@ def eval_saes(
         dictionary = dictionary.to(dtype=model.dtype)
 
         layer = config["trainer"]["layer"]
-        submodule = utils.get_submodule(model, layer)
+        component = config["trainer"]["component"]
+        submodule = utils.get_submodule(model, component, layer)
 
         activation_dim = config["trainer"]["activation_dim"]
 
@@ -252,9 +274,6 @@ def push_to_huggingface(save_dir: str, repo_id: str):
 
 
 if __name__ == "__main__":
-    """python demo.py --save_dir ./run2 --model_name EleutherAI/pythia-70m-deduped --layers 3 --architectures standard jump_relu batch_top_k top_k gated --use_wandb
-    python demo.py --save_dir ./run3 --model_name google/gemma-2-2b --layers 12 --architectures standard top_k --use_wandb
-    python demo.py --save_dir ./jumprelu --model_name EleutherAI/pythia-70m-deduped --layers 3 --architectures jump_relu --use_wandb"""
     args = get_args()
 
     hf_repo_id = args.hf_repo_id
@@ -278,20 +297,22 @@ if __name__ == "__main__":
     save_dir = f"{args.save_dir}_{args.model_name}_{'_'.join(args.architectures)}".replace("/", "_")
 
     for layer in args.layers:
-        run_sae_training(
-            model_name=args.model_name,
-            layer=layer,
-            save_dir=save_dir,
-            device=args.device,
-            architectures=args.architectures,
-            num_tokens=shoe_config.num_tokens,
-            random_seeds=shoe_config.random_seeds,
-            dictionary_widths=shoe_config.dictionary_widths,
-            learning_rates=shoe_config.learning_rates,
-            dry_run=args.dry_run,
-            use_wandb=args.use_wandb,
-            save_checkpoints=args.save_checkpoints,
-        )
+        for component in args.components:
+            run_sae_training(
+                model_name=args.model_name,
+                layer=layer,
+                save_dir=save_dir,
+                device=args.device,
+                architectures=args.architectures,
+                num_tokens=shoe_config.num_tokens,
+                random_seeds=shoe_config.random_seeds,
+                dictionary_widths=shoe_config.dictionary_widths,
+                learning_rates=shoe_config.learning_rates,
+                dry_run=args.dry_run,
+                use_wandb=args.use_wandb,
+                save_checkpoints=args.save_checkpoints,
+                component=component,
+            )
 
     ae_paths = utils.get_nested_folders(save_dir)
 
