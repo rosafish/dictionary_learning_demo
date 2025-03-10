@@ -57,6 +57,7 @@ def get_args():
 def run_sae_training(
     model_name: str,
     layer: int,
+    component: str,
     save_dir: str,
     device: str,
     architectures: list,
@@ -68,7 +69,6 @@ def run_sae_training(
     use_wandb: bool = False,
     save_checkpoints: bool = False,
     buffer_tokens: int = 250_000,
-    component: str,
 ):
     random.seed(shoe_config.random_seeds[0])
     t.manual_seed(shoe_config.random_seeds[0])
