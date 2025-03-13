@@ -80,7 +80,8 @@ def run_sae_training(
     sae_batch_size = shoe_config.LLM_CONFIG[model_name].sae_batch_size
     dtype = shoe_config.LLM_CONFIG[model_name].dtype
 
-    num_buffer_inputs = buffer_tokens // context_length
+    # num_buffer_inputs = buffer_tokens // context_length
+    num_buffer_inputs = 10_000
     print(f"buffer_size: {num_buffer_inputs}, buffer_size_in_tokens: {buffer_tokens}")
 
     log_steps = 100  # Log the training on wandb or print to console every log_steps

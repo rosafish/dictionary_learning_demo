@@ -26,7 +26,7 @@ class LLMConfig:
 class SparsityPenalties:
     standard: list[float]
 
-num_tokens = 50_000_000 
+num_tokens = 2_000_000_000 
 print(f"NOTE: Training on {num_tokens} tokens")
 
 eval_num_inputs = 200
@@ -36,14 +36,15 @@ dictionary_widths = [2**14]
 WARMUP_STEPS = 1000
 SPARSITY_WARMUP_STEPS = 5000
 DECAY_START_FRACTION = 0.8
+RESAMPLE_STEPS = 25000
 
-learning_rates = [3e-4]
+learning_rates = [1e-4]
 
 wandb_project = "pythia-70m-sweep"
 
 LLM_CONFIG = {
     "/data/rosa/work_in_progress/compositional_interpretability/outputs/shoe_simple_two_level_lr0.0005_epochs30_batch8_warmup100_pythia_cls_head": LLMConfig(
-        llm_batch_size=64, context_length=1024, sae_batch_size=2048, dtype=t.float32
+        llm_batch_size=64, context_length=128, sae_batch_size=2**14, dtype=t.float32
     ),
 }
 
@@ -114,8 +115,10 @@ def get_trainer_configs(
     warmup_steps: int = WARMUP_STEPS,
     sparsity_warmup_steps: int = SPARSITY_WARMUP_STEPS,
     decay_start_fraction=DECAY_START_FRACTION,
+    resample_steps=RESAMPLE_STEPS,
 ) -> list[dict]:
-    decay_start = int(steps * decay_start_fraction)
+    # decay_start = int(steps * decay_start_fraction)
+    decay_start = None
 
     trainer_configs = []
 
@@ -128,7 +131,8 @@ def get_trainer_configs(
         "layer": layer,
         "lm_name": model_name,
         "submodule_name": submodule_name,
-        "component": component
+        "component": component,
+        "resample_steps": resample_steps,
     }
 
     if TrainerType.STANDARD.value in architectures:
