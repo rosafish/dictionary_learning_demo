@@ -47,6 +47,9 @@ LLM_CONFIG = {
         llm_batch_size=64, context_length=1024, sae_batch_size=2048, dtype=t.float32
         # llm_batch_size=64, context_length=128, sae_batch_size=2048, dtype=t.float32
     ),
+    "EleutherAI/pythia-70m-deduped": LLMConfig(
+        llm_batch_size=64, context_length=1024, sae_batch_size=2048, dtype=t.float32
+    ),
 }
 
 SPARSITY_PENALTIES = SparsityPenalties(

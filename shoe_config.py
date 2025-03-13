@@ -46,6 +46,9 @@ LLM_CONFIG = {
     "/data/rosa/work_in_progress/compositional_interpretability/outputs/shoe_simple_two_level_lr0.0005_epochs30_batch8_warmup100_pythia_cls_head": LLMConfig(
         llm_batch_size=64, context_length=128, sae_batch_size=2**14, dtype=t.float32
     ),
+    "EleutherAI/pythia-70m-deduped": LLMConfig(
+        llm_batch_size=512, context_length=128, sae_batch_size=2**14, dtype=t.float32
+    ),
 }
 
 SPARSITY_PENALTIES = SparsityPenalties(
