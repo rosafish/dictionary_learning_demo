@@ -54,11 +54,12 @@ LLM_CONFIG = {
 
 SPARSITY_PENALTIES = SparsityPenalties(
     # standard=[0.012, 0.015, 0.02, 0.03, 0.04, 0.06],
-    standard=[0.01],
+    standard=[0.1],
 )
 
 # TARGET_L0s = [20, 40, 80, 160, 320, 640]
-TARGET_L0s = [640]
+# TARGET_L0s = [60]
+TARGET_L0s = [60, 90, 120, 150]
 
 @dataclass
 class BaseTrainerConfig:
@@ -138,7 +139,7 @@ def get_trainer_configs(
         "lm_name": model_name,
         "submodule_name": submodule_name,
         "component": component,
-        "resample_steps": resample_steps,
+        # "resample_steps": resample_steps,
     }
 
     if TrainerType.STANDARD.value in architectures:
@@ -175,20 +176,20 @@ def get_trainer_configs(
     #         )
     #         trainer_configs.append(asdict(config))
 
-    # if TrainerType.BATCH_TOP_K.value in architectures:
-    #     for seed, dict_size, learning_rate, k in itertools.product(
-    #         seeds, dict_sizes, learning_rates, TARGET_L0s
-    #     ):
-    #         config = TopKTrainerConfig(
-    #             **base_config,
-    #             trainer=BatchTopKTrainer,
-    #             dict_class=BatchTopKSAE,
-    #             lr=learning_rate,
-    #             dict_size=dict_size,
-    #             seed=seed,
-    #             k=k,
-    #             wandb_name=f"BatchTopKTrainer-{model_name}-{submodule_name}",
-    #         )
-    #         trainer_configs.append(asdict(config))
+    if TrainerType.BATCH_TOP_K.value in architectures:
+        for seed, dict_size, learning_rate, k in itertools.product(
+            seeds, dict_sizes, learning_rates, TARGET_L0s
+        ):
+            config = TopKTrainerConfig(
+                **base_config,
+                trainer=BatchTopKTrainer,
+                dict_class=BatchTopKSAE,
+                lr=learning_rate,
+                dict_size=dict_size,
+                seed=seed,
+                k=k,
+                wandb_name=f"BatchTopKTrainer-{model_name}-{submodule_name}",
+            )
+            trainer_configs.append(asdict(config))
  
     return trainer_configs
