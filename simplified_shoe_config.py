@@ -59,7 +59,8 @@ SPARSITY_PENALTIES = SparsityPenalties(
 
 # TARGET_L0s = [20, 40, 80, 160, 320, 640]
 # TARGET_L0s = [60]
-TARGET_L0s = [60, 90, 120, 150]
+# TARGET_L0s = [30, 60, 90, 120, 150]
+TARGET_L0s = [180, 210, 250, 300, 400, 500]
 
 @dataclass
 class BaseTrainerConfig:
@@ -159,22 +160,22 @@ def get_trainer_configs(
             )
             trainer_configs.append(asdict(config))
 
-    # if TrainerType.JUMP_RELU.value in architectures:
-    #     for seed, dict_size, learning_rate, target_l0 in itertools.product(
-    #         seeds, dict_sizes, learning_rates, TARGET_L0s
-    #     ):
-    #         config = JumpReluTrainerConfig(
-    #             **base_config,
-    #             trainer=JumpReluTrainer,
-    #             dict_class=JumpReluAutoEncoder,
-    #             sparsity_warmup_steps=sparsity_warmup_steps,
-    #             lr=learning_rate,
-    #             dict_size=dict_size,
-    #             seed=seed,
-    #             target_l0=target_l0,
-    #             wandb_name=f"JumpReluTrainer-{model_name}-{submodule_name}",
-    #         )
-    #         trainer_configs.append(asdict(config))
+    if TrainerType.JUMP_RELU.value in architectures:
+        for seed, dict_size, learning_rate, target_l0 in itertools.product(
+            seeds, dict_sizes, learning_rates, TARGET_L0s
+        ):
+            config = JumpReluTrainerConfig(
+                **base_config,
+                trainer=JumpReluTrainer,
+                dict_class=JumpReluAutoEncoder,
+                sparsity_warmup_steps=sparsity_warmup_steps,
+                lr=learning_rate,
+                dict_size=dict_size,
+                seed=seed,
+                target_l0=target_l0,
+                wandb_name=f"JumpReluTrainer-{model_name}-{submodule_name}",
+            )
+            trainer_configs.append(asdict(config))
 
     if TrainerType.BATCH_TOP_K.value in architectures:
         for seed, dict_size, learning_rate, k in itertools.product(
