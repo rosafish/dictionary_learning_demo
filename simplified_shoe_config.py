@@ -60,7 +60,8 @@ SPARSITY_PENALTIES = SparsityPenalties(
 # TARGET_L0s = [20, 40, 80, 160, 320, 640]
 # TARGET_L0s = [60]
 # TARGET_L0s = [30, 60, 90, 120, 150]
-TARGET_L0s = [180, 210, 250, 300, 400, 500]
+# TARGET_L0s = [180, 210, 250, 300, 400, 500]
+TARGET_L0s = [60, 150, 300]
 
 @dataclass
 class BaseTrainerConfig:

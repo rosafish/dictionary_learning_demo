@@ -24,6 +24,12 @@ def get_args():
     parser.add_argument("--dry_run", action="store_true", help="dry run sweep")
     parser.add_argument("--save_checkpoints", action="store_true", help="save checkpoints")
     parser.add_argument(
+        "--do_train", action="store_true", help="whether to train the models", default=False
+    )
+    parser.add_argument(
+        "--do_eval", action="store_true", help="whether to evaluate the models", default=False
+    )
+    parser.add_argument(
         "--layers", type=int, nargs="+", required=True, help="layers to train SAE on"
     )
     parser.add_argument(
@@ -185,9 +191,12 @@ def eval_saes(
     else:
         io = "out"
 
-    context_length = shoe_config.LLM_CONFIG[model_name].context_length
-    llm_batch_size = shoe_config.LLM_CONFIG[model_name].llm_batch_size
-    loss_recovered_batch_size = max(llm_batch_size // 5, 1)
+    # context_length = shoe_config.LLM_CONFIG[model_name].context_length
+    # llm_batch_size = shoe_config.LLM_CONFIG[model_name].llm_batch_size
+    # loss_recovered_batch_size = max(llm_batch_size // 5, 1)
+    context_length = 64
+    llm_batch_size = 32
+    loss_recovered_batch_size = 1 # maybe adjust for shoe eval data
     sae_batch_size = loss_recovered_batch_size * context_length
     dtype = shoe_config.LLM_CONFIG[model_name].dtype
 
@@ -196,9 +205,13 @@ def eval_saes(
 
     buffer_size = n_inputs
     io = "out"
-    n_batches = n_inputs // loss_recovered_batch_size
+    n_batches = n_inputs // loss_recovered_batch_size #Rosa: maybe adjust for shoe eval data
+    print(f"n_inputs: {n_inputs}")
+    print(f"loss_recovered_batch_size: {loss_recovered_batch_size}")
+    print(f"n_batches: {n_batches}")
 
-    generator = hf_dataset_to_generator("monology/pile-uncopyrighted")
+    # generator = hf_dataset_to_generator("monology/pile-uncopyrighted")
+    generator = utils.shoe_dataset_to_generator("/data/rosa/work_in_progress/compositional_interpretability/data/shoe_simple_two_level_train.pkl")
 
     input_strings = []
     for i, example in enumerate(generator):
@@ -224,6 +237,11 @@ def eval_saes(
 
         activation_dim = config["trainer"]["activation_dim"]
 
+        print(f"n_ctxs: {buffer_size}")
+        print(f"ctx_len: {context_length}")
+        print(f"refresh_batch_size: {llm_batch_size}")
+        print(f"out_batch_size: {sae_batch_size}")
+
         activation_buffer = ActivationBuffer(
             iter(input_strings),
             model,
@@ -241,7 +259,7 @@ def eval_saes(
             dictionary,
             activation_buffer,
             context_length,
-            loss_recovered_batch_size,
+            loss_recovered_batch_size, 
             io=io,
             device=device,
             n_batches=n_batches,
@@ -296,35 +314,51 @@ if __name__ == "__main__":
 
     save_dir = f"{args.save_dir}_{args.model_name}_{'_'.join(args.architectures)}".replace("/", "_")
 
-    for layer in args.layers:
-        for component in args.components:
-            run_sae_training(
-                model_name=args.model_name,
-                layer=layer,
-                save_dir=save_dir,
-                device=args.device,
-                architectures=args.architectures,
-                num_tokens=shoe_config.num_tokens,
-                random_seeds=shoe_config.random_seeds,
-                dictionary_widths=shoe_config.dictionary_widths,
-                learning_rates=shoe_config.learning_rates,
-                dry_run=args.dry_run,
-                use_wandb=args.use_wandb,
-                save_checkpoints=args.save_checkpoints,
-                component=component,
-            )
+    if args.do_train:
+        for layer in args.layers:
+            for component in args.components:
+                run_sae_training(
+                    model_name=args.model_name,
+                    layer=layer,
+                    save_dir=save_dir,
+                    device=args.device,
+                    architectures=args.architectures,
+                    num_tokens=shoe_config.num_tokens,
+                    random_seeds=shoe_config.random_seeds,
+                    dictionary_widths=shoe_config.dictionary_widths,
+                    learning_rates=shoe_config.learning_rates,
+                    dry_run=args.dry_run,
+                    use_wandb=args.use_wandb,
+                    save_checkpoints=args.save_checkpoints,
+                    component=component,
+                )
 
-    ae_paths = utils.get_nested_folders(save_dir)
+        ae_paths = utils.get_nested_folders(save_dir)
 
-    eval_saes(
-        args.model_name,
-        ae_paths,
-        shoe_config.eval_num_inputs,
-        args.device,
-        overwrite_prev_results=True,
-    )
+        eval_saes(
+            args.model_name,
+            ae_paths,
+            shoe_config.eval_num_inputs,
+            args.device,
+            overwrite_prev_results=True,
+        )
 
-    print(f"Total time: {time.time() - start_time}")
+        print(f"Total time: {time.time() - start_time}")
 
-    if hf_repo_id:
-        push_to_huggingface(save_dir, hf_repo_id)
+        if hf_repo_id:
+            push_to_huggingface(save_dir, hf_repo_id)
+
+    if args.do_eval:
+        ae_paths = utils.get_nested_folders(save_dir)
+        print(f"ae_paths: {ae_paths}")
+
+        eval_results = eval_saes(
+            args.model_name,
+            ae_paths,
+            shoe_config.eval_num_inputs,
+            args.device,
+            overwrite_prev_results=True,
+        )
+
+        if hf_repo_id:
+            push_to_huggingface(save_dir, hf_repo_id)

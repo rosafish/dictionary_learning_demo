@@ -12,9 +12,20 @@
 #     --architectures batch_top_k\
 #     --components resid
 
+# python simplified_shoe.py\
+#     --save_dir ./resid_5\
+#     --model_name /data/rosa/work_in_progress/compositional_interpretability/outputs/shoe_simple_two_level_lr0.0005_epochs30_batch8_warmup100_pythia_cls_head\
+#     --layers 5\
+#     --architectures batch_top_k\
+#     --components resid
+
+
 python simplified_shoe.py\
-    --save_dir ./resid_5\
+    --save_dir ./eval_on_shoe\
     --model_name /data/rosa/work_in_progress/compositional_interpretability/outputs/shoe_simple_two_level_lr0.0005_epochs30_batch8_warmup100_pythia_cls_head\
     --layers 5\
     --architectures batch_top_k\
-    --components resid
+    --components resid\
+    --do_eval
+
+    # --do_train
